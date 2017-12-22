@@ -11,7 +11,11 @@ export type PromiseInitFn<T> = () => {
   resolve: (value?: T | PromiseLike<T>) => void
   reject: (reason?: any) => void
 }
-export type AssyncConstructorInput<T> = PromiseInitFn<T[]> | MaybePromise<T[]>
+export type AssyncConstructorInput<T> = PromiseInitFn<T[]> | MaybePromise<T[]> | Promise<T>[]
+
+function isParallel<T>(i: AssyncConstructorInput<T>): i is Promise<T>[] {
+  return Array.isArray(i)
+}
 
 /**
  * @class Aasync
@@ -27,15 +31,25 @@ export type AssyncConstructorInput<T> = PromiseInitFn<T[]> | MaybePromise<T[]>
  * main()
  */
 export class Assync<T> extends Promise<T[]> {
+  private parallel?: Promise<T>[]
+
   constructor(input: AssyncConstructorInput<T>) {
     if (input instanceof Function) {
       super(input)
+      return this
     } else {
+      let parallel
       super((resolve, reject) => {
-        Promise.resolve(input || [])
-          .then(resolve)
-          .catch(reject)
+        let p
+        if (isParallel(input)) {
+          parallel = input.map(i => Promise.resolve(i))
+          p = Promise.all(parallel)
+        } else {
+          p = Promise.resolve(input || [])
+        }
+        p.then(resolve).catch(reject)
       })
+      this.parallel = parallel
     }
   }
 
@@ -92,15 +106,14 @@ export class Assync<T> extends Promise<T[]> {
     return p
   }
 
-  map<U>(fn: (i: T) => U): Assync<U> {
-    const p = this.reduce(
-      async (o, i) => {
-        o.push(await fn(i))
-        return o
-      },
-      [] as U[],
-    )
-    return new this.ctor(p)
+  map<U>(fn: (i: T) => MaybePromise<U>): Assync<U> {
+    if (this.parallel) {
+      const p = this.parallel.map(i => i.then(fn))
+      return new this.ctor<U>(p)
+    } else {
+      const p = this.then(i => Promise.all(i.map(fn)))
+      return new this.ctor(p)
+    }
   }
 
   private get ctor(): typeof Assync {

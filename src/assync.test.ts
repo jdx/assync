@@ -1,5 +1,10 @@
 import assync from './assync'
 
+const wait = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms))
+const flushPromises = () => new Promise(resolve => setImmediate(resolve))
+
+jest.useFakeTimers()
+
 test('accepts undefined', async () => {
   let input = assync(undefined as any)
   let output = await input.compact()
@@ -43,5 +48,31 @@ describe('map', () => {
     let input = assync([1, 2, 3])
     let output = await input.map(i => (i * 2).toString())
     expect(output).toEqual(['2', '4', '6'])
+  })
+
+  test('parallel', async () => {
+    let input = assync([1, 10, 1, 5])
+    let order: number[] = []
+    let fn = async (i: number) => {
+      order.push(i)
+      await wait(i * 1000)
+      return i + 1
+    }
+    let output = input
+      .map(fn)
+      .map(fn)
+      .map(fn)
+      .map(fn)
+      .map(fn)
+      .map(fn)
+    let tick = async () => {
+      let p = await Promise.race([output, flushPromises()])
+      if (p) return
+      jest.advanceTimersByTime(1000)
+      tick()
+    }
+    tick()
+    expect(await output).toEqual([7, 16, 7, 11])
+    expect(order).toEqual([1, 10, 1, 5, 2, 2, 3, 3, 6, 4, 4, 11, 5, 5, 7, 6, 6, 8, 12, 9, 13, 10, 14, 15])
   })
 })
