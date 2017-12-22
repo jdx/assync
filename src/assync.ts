@@ -1,10 +1,6 @@
 export type Falsy = '' | 0 | false | null | undefined
 export type MaybePromise<T> = Promise<T> | T
 
-// export async function concatAsync<T>(promises: ReduceAsyncSubject<T[]>): Promise<T[]> {
-//   return reduceAsync(promises, (arr, i) => arr.concat(i), [] as T[])
-// }
-
 export type ReduceFn<T, TResult> = (prev: TResult, i: T) => MaybePromise<TResult>
 
 export type PromiseInitFn<T> = () => {
@@ -26,12 +22,16 @@ export class Assync<T> extends Promise<T[]> {
     }
   }
 
+  flatMap<U>(this: Assync<U[]>): Promise<U[]> {
+    const p = this.reduce((o, i) => o.concat(i), [] as U[])
+    return new this.ctor(p)
+  }
+
   compact<U>(this: Assync<U | Falsy>): Assync<U> {
     const p = this.reduce(
-      (output, i) => {
-        if (!i) return output
-        output.push(i)
-        return output
+      (o, i) => {
+        if (i) o.push(i)
+        return o
       },
       [] as U[],
     )
@@ -43,7 +43,7 @@ export class Assync<T> extends Promise<T[]> {
       let agg = initial as U
       for (let p of input) {
         let i = await p
-        if (i) agg = await fn(agg, await i)
+        agg = await fn(agg, await i)
       }
       return agg!
     })
