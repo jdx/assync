@@ -92,6 +92,17 @@ export class Assync<T> extends Promise<T[]> {
     return p
   }
 
+  map<U>(fn: (i: T) => U): Assync<U> {
+    const p = this.reduce(
+      async (o, i) => {
+        o.push(await fn(i))
+        return o
+      },
+      [] as U[],
+    )
+    return new this.ctor(p)
+  }
+
   private get ctor(): typeof Assync {
     return this.constructor as typeof Assync
   }
