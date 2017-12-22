@@ -79,8 +79,15 @@ export class Assync<T> extends Promise<T[]> {
     )
   }
 
-  flatMap<U>(this: Assync<U[]>): Promise<U[]> {
-    const p = this.reduce((o, i) => o.concat(i), [] as U[])
+  flatMap<U>(fn: (i: T) => U[]): Assync<U>
+  flatMap<U>(this: Assync<U[]>): Assync<U>
+  flatMap<U>(this: Assync<any>, fn?: (i: T) => U[]): Assync<U> {
+    const p = this.reduce(
+      async (o, i) => {
+        return fn ? o.concat(await fn(i)) : o.concat(i)
+      },
+      [] as U[],
+    )
     return new this.ctor(p)
   }
 

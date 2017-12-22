@@ -39,6 +39,12 @@ describe('flatMap', () => {
     let output = await input.flatMap()
     expect(output).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
   })
+
+  test('fn', async () => {
+    let input = assync(['foo:bar', 'baz:bak'])
+    let output = await input.flatMap(i => i.split(':'))
+    expect(output.join('x')).toEqual('fooxbarxbazxbak')
+  })
 })
 
 describe('reduce', () => {
