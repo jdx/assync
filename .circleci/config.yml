@@ -9,21 +9,14 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v3-yarn-{{ .Branch }}-{{checksum "yarn.lock"}}
-            - v3-yarn-{{ .Branch }}
-            - v3-yarn-master
-      - run: git submodule sync && git submodule update --init --recursive
+            - v0-yarn-{{ .Branch }}-{{checksum "yarn.lock"}}
+            - v0-yarn-{{ .Branch }}
+            - v0-yarn-master
       - run: yarn
-      - run: yarn link
-      - run: cd example && yarn link cli-engine && yarn
-      - run: cd test/roots/test-foo && yarn
-      - run: yarn
-      - run: ./bin/run version
       - run: yarn test --coverage
       - run: bash <(curl -s https://codecov.io/bash)
       - save_cache:
-          key: v3-yarn-{{ .Branch }}-{{checksum "yarn.lock"}}
+          key: v0-yarn-{{ .Branch }}-{{checksum "yarn.lock"}}
           paths:
             - /cli/node_modules
             - /usr/local/share/.cache/yarn
-            - /root/.cache/cli-engine/yarn
