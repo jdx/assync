@@ -6,6 +6,14 @@ test('accepts undefined', async () => {
   expect(output).toEqual([])
 })
 
+describe('filter', () => {
+  test('ok', async () => {
+    let input = assync([1, 2, 3, 4, 5, 6])
+    let output = await input.filter(i => i % 2 === 0)
+    expect(output).toEqual([2, 4, 6])
+  })
+})
+
 describe('flatMap', () => {
   test('ok', async () => {
     let input = assync([[1, 2, 3], [4, 5, 6], [7, 8, 9]])

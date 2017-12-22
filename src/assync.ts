@@ -39,14 +39,6 @@ export class Assync<T> extends Promise<T[]> {
     }
   }
 
-  /**
-   * k
-   */
-  flatMap<U>(this: Assync<U[]>): Promise<U[]> {
-    const p = this.reduce((o, i) => o.concat(i), [] as U[])
-    return new this.ctor(p)
-  }
-
   compact<U>(this: Assync<U | Falsy>): Assync<U> {
     const p = this.reduce(
       (o, i) => {
@@ -55,6 +47,22 @@ export class Assync<T> extends Promise<T[]> {
       },
       [] as U[],
     )
+    return new this.ctor(p)
+  }
+
+  filter(fn: (i: T) => boolean): Assync<T> {
+    const p = this.reduce(
+      async (o, i) => {
+        if (await fn(i)) o.push(i)
+        return o
+      },
+      [] as T[],
+    )
+    return new this.ctor(p)
+  }
+
+  flatMap<U>(this: Assync<U[]>): Promise<U[]> {
+    const p = this.reduce((o, i) => o.concat(i), [] as U[])
     return new this.ctor(p)
   }
 
