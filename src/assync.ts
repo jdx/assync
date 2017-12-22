@@ -1,72 +1,57 @@
 export type Falsy = '' | 0 | false | null | undefined
 export type MaybePromise<T> = Promise<T> | T
-export type Nullable<T> = T | undefined
 
-export type ReduceAsyncFn<T, U, V> = (aggregate: V, i: T) => MaybePromise<U>
-export type ReduceAsyncSubject<T> = Array<Nullable<MaybePromise<T>>> | T[]
+// export async function concatAsync<T>(promises: ReduceAsyncSubject<T[]>): Promise<T[]> {
+//   return reduceAsync(promises, (arr, i) => arr.concat(i), [] as T[])
+// }
 
-export async function reduceAsync<T, U>(subjects: ReduceAsyncSubject<T>, fn: ReduceAsyncFn<T, U, undefined>): Promise<U>
-export async function reduceAsync<T, U>(
-  subjects: ReduceAsyncSubject<T>,
-  fn: ReduceAsyncFn<T, U, U>,
-  initial: U,
-): Promise<U>
-export async function reduceAsync<T, U>(
-  subjects: ReduceAsyncSubject<T>,
-  fn: ReduceAsyncFn<T, U, U | undefined>,
-  initial?: U,
-): Promise<U> {
-  let agg = initial
-  for (let p of subjects || []) {
-    let i = await p
-    if (i) agg = await fn(agg, await i)
-  }
-  return agg!
+export type ReduceFn<T, TResult> = (prev: TResult, i: T) => MaybePromise<TResult>
+
+export type PromiseInitFn<T> = () => {
+  resolve: (value?: T | PromiseLike<T>) => void
+  reject: (reason?: any) => void
 }
-
-export async function concatAsync<T>(promises: ReduceAsyncSubject<T[]>): Promise<T[]> {
-  return reduceAsync(promises, (arr, i) => arr.concat(i), [] as T[])
-}
-
-export function compactAsync<T>(promises: Array<Promise<T | Falsy>>): Promise<T[]> {
-  return reduceAsync(
-    promises,
-    (arr, i) => {
-      if (!i) arr.push((i as any) as T)
-      return arr
-    },
-    [] as T[],
-  )
-}
+export type AssyncConstructorInput<T> = PromiseInitFn<T[]> | MaybePromise<T[]>
 
 export class Assync<T> extends Promise<T[]> {
-  private p: Promise<T[]>
-
-  constructor(items: MaybePromise<T[]>) {
-    if (items instanceof Function) {
-      super(items as any)
-      return this
+  constructor(input: AssyncConstructorInput<T>) {
+    if (input instanceof Function) {
+      super(input)
+    } else {
+      super((resolve, reject) => {
+        Promise.resolve(input || [])
+          .then(resolve)
+          .catch(reject)
+      })
     }
-    let p = Promise.resolve(items)
-    super((resolve, reject) => {
-      p.then(resolve).catch(reject)
-    })
-    this.p = p
   }
 
-  compact(this: Assync<T | undefined | null>): Assync<T> {
-    let p = this.p.then(items => {
-      return reduceAsync(
-        items,
-        (arr, i) => {
-          if (i === undefined || i === null) return arr
-          arr.push((i as any) as T)
-          return arr
-        },
-        [] as T[],
-      )
+  compact<U>(this: Assync<U | Falsy>): Assync<U> {
+    const p = this.reduce(
+      (output, i) => {
+        if (!i) return output
+        output.push(i)
+        return output
+      },
+      [] as U[],
+    )
+    return new this.ctor(p)
+  }
+
+  reduce<U>(fn: ReduceFn<T, U>, initial: U): Promise<U> {
+    const p = this.then(async input => {
+      let agg = initial as U
+      for (let p of input) {
+        let i = await p
+        if (i) agg = await fn(agg, await i)
+      }
+      return agg!
     })
-    return new Assync(p)
+    return p
+  }
+
+  private get ctor(): typeof Assync {
+    return this.constructor as typeof Assync
   }
 }
 
