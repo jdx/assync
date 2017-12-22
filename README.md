@@ -4,9 +4,13 @@
 [![Dependency Status](https://david-dm.org/jdxcode/assync.svg)](https://david-dm.org/jdxcode/assync)
 [![codecov](https://codecov.io/gh/jdxcode/assync/branch/master/graph/badge.svg)](https://codecov.io/gh/jdxcode/assync)
 
-## API Reference
-{{#module name="assync"}}
-{{>body~}}
-{{>member-index~}}
-{{>members~}}
-{{/module}}
+**Example**
+```js
+const {assync} = require('assync')
+
+async function main () {
+    const output = await assync([1, null, 3]).filter(i => i !== null)
+      console.dir(output)
+}
+main()
+```
