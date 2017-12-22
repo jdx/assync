@@ -2,6 +2,12 @@ import assync from './assync'
 
 const wait = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms))
 const flushPromises = () => new Promise(resolve => setImmediate(resolve))
+const tick = async (until: Promise<any>) => {
+  let p = await Promise.race([until.then(() => 'done'), flushPromises()])
+  if (p === 'done') return
+  jest.advanceTimersByTime(1000)
+  tick(until)
+}
 
 jest.useFakeTimers()
 
@@ -54,9 +60,9 @@ describe('map', () => {
     let input = assync([1, 10, 1, 5])
     let order: number[] = []
     let fn = async (i: number) => {
-      order.push(i)
       await wait(i * 1000)
-      return i + 1
+      order.push(i)
+      return i * 2
     }
     let output = input
       .map(fn)
@@ -65,14 +71,32 @@ describe('map', () => {
       .map(fn)
       .map(fn)
       .map(fn)
-    let tick = async () => {
-      let p = await Promise.race([output, flushPromises()])
-      if (p) return
-      jest.advanceTimersByTime(1000)
-      tick()
-    }
-    tick()
-    expect(await output).toEqual([7, 16, 7, 11])
-    expect(order).toEqual([1, 10, 1, 5, 2, 2, 3, 3, 6, 4, 4, 11, 5, 5, 7, 6, 6, 8, 12, 9, 13, 10, 14, 15])
+    tick(output)
+    expect(await output).toEqual([64, 640, 64, 320])
+    expect(order).toEqual([1, 1, 2, 2, 5, 4, 4, 10, 10, 8, 8, 20, 16, 16, 20, 32, 32, 40, 40, 80, 80, 160, 160, 320])
   })
+})
+
+test('map + filter in parallel', async () => {
+  let input = assync([1, 10, 1, 5])
+  let order: number[] = []
+  let mapFn = async (i: number) => {
+    await wait(i * 1000)
+    return i * 2
+  }
+  let filterFn = async (i: number) => {
+    await wait(i * 1000)
+    order.push(i)
+    return true
+  }
+  let output = input
+    .map(mapFn)
+    .filter(filterFn)
+    .map(mapFn)
+    .filter(filterFn)
+    .map(mapFn)
+    .filter(filterFn)
+  tick(output)
+  await output
+  expect(order).toEqual([2, 20, 2, 10, 4, 40, 4, 20, 8, 80, 8, 40])
 })

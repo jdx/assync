@@ -4,13 +4,20 @@
 [![Dependency Status](https://david-dm.org/jdxcode/assync.svg)](https://david-dm.org/jdxcode/assync)
 [![codecov](https://codecov.io/gh/jdxcode/assync/branch/master/graph/badge.svg)](https://codecov.io/gh/jdxcode/assync)
 
+assync
+======
+
+Asynchronous, parallel .map(), .filter(), and more. Works really well with async/await.
+
 **Example**
+
 ```js
+const {HTTP} = require('http-call')
 const {assync} = require('assync')
 
 async function main () {
-    const output = await assync([1, null, 3]).filter(i => i !== null)
-      console.dir(output)
+  const output = await assync(['jdxcode']) // start with github user 'jdxcode'
+    .map(userID => )
 }
 main()
 ```

@@ -3,7 +3,7 @@
  */
 
 export type Falsy = '' | 0 | false | null | undefined
-export type MaybePromise<T> = Promise<T> | T
+export type MaybePromise<T> = T | PromiseLike<T>
 
 export type ReduceFn<T, TResult> = (prev: TResult, i: T) => MaybePromise<TResult>
 
@@ -11,9 +11,14 @@ export type PromiseInitFn<T> = () => {
   resolve: (value?: T | PromiseLike<T>) => void
   reject: (reason?: any) => void
 }
-export type AssyncConstructorInput<T> = PromiseInitFn<T[]> | MaybePromise<T[]> | Promise<T>[]
 
-function isParallel<T>(i: AssyncConstructorInput<T>): i is Promise<T>[] {
+export type AssyncConstructorInput<T> = PromiseInitFn<T[]> | MaybePromise<T[]> | MaybePromise<T>[]
+
+function isPromiseInitFn<T>(i: AssyncConstructorInput<T>): i is PromiseInitFn<T[]> {
+  return typeof i === 'function'
+}
+
+function isParallel<T>(i: AssyncConstructorInput<T>): i is MaybePromise<T>[] {
   return Array.isArray(i)
 }
 
@@ -31,48 +36,47 @@ function isParallel<T>(i: AssyncConstructorInput<T>): i is Promise<T>[] {
  * main()
  */
 export class Assync<T> extends Promise<T[]> {
-  private parallel?: Promise<T>[]
+  private parallel?: PromiseLike<T>[]
 
   constructor(input: AssyncConstructorInput<T>) {
-    if (input instanceof Function) {
+    if (isPromiseInitFn(input)) {
       super(input)
       return this
-    } else {
-      let parallel
+    }
+    if (isParallel(input)) {
+      let f: MaybePromise<T>[] = input
+      let promises = f.map(i => Promise.resolve(i))
       super((resolve, reject) => {
-        let p
-        if (isParallel(input)) {
-          parallel = input.map(i => Promise.resolve(i))
-          p = Promise.all(parallel)
-        } else {
-          p = Promise.resolve(input || [])
-        }
-        p.then(resolve).catch(reject)
+        Promise.resolve(Promise.all(promises))
+          .then(resolve)
+          .catch(reject)
       })
-      this.parallel = parallel
+      this.parallel = promises
+    } else {
+      super((resolve, reject) => {
+        Promise.resolve(input || [])
+          .then(resolve)
+          .catch(reject)
+      })
     }
   }
 
   compact<U>(this: Assync<U | Falsy>): Assync<U> {
-    const p = this.reduce(
-      (o, i) => {
-        if (i) o.push(i)
-        return o
-      },
-      [] as U[],
-    )
-    return new this.ctor(p)
+    return this.filter((i): i is U => !!i)
   }
 
-  filter(fn: (i: T) => boolean): Assync<T> {
-    const p = this.reduce(
-      async (o, i) => {
-        if (await fn(i)) o.push(i)
-        return o
-      },
-      [] as T[],
+  filter<U extends T>(fn: (i: T) => i is U): Assync<U>
+  filter(fn: (i: T) => MaybePromise<boolean>): Assync<T>
+  filter(fn: (i: T) => MaybePromise<boolean>): Assync<T> {
+    return new Assync(
+      this.reduce(
+        async (o, i) => {
+          if (await fn(i)) o.push(i)
+          return o
+        },
+        [] as T[],
+      ),
     )
-    return new this.ctor(p)
   }
 
   flatMap<U>(this: Assync<U[]>): Promise<U[]> {
@@ -107,13 +111,13 @@ export class Assync<T> extends Promise<T[]> {
   }
 
   map<U>(fn: (i: T) => MaybePromise<U>): Assync<U> {
+    let p
     if (this.parallel) {
-      const p = this.parallel.map(i => i.then(fn))
-      return new this.ctor<U>(p)
+      p = this.parallel.map(i => i.then(fn))
     } else {
-      const p = this.then(i => Promise.all(i.map(fn)))
-      return new this.ctor(p)
+      p = this.then(i => new Assync<U>(i.map(fn)))
     }
+    return new Assync<U>(p)
   }
 
   private get ctor(): typeof Assync {
