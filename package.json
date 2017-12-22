@@ -31,5 +31,5 @@
     "pretest": "tsc",
     "test": "jest"
   },
-  "types": "lib/cli.d.ts"
+  "types": "lib/assync.d.ts"
 }
