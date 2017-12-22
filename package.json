@@ -1,7 +1,7 @@
 {
   "name": "assync",
   "description": "async array helpers",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Jeff Dickey @jdxcode",
   "devDependencies": {
     "@types/jest": "^21.1.9",
