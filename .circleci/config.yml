@@ -1,0 +1,29 @@
+---
+version: 2
+jobs:
+  build:
+    working_directory: /cli
+    docker:
+      - image: node:9
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v3-yarn-{{ .Branch }}-{{checksum "yarn.lock"}}
+            - v3-yarn-{{ .Branch }}
+            - v3-yarn-master
+      - run: git submodule sync && git submodule update --init --recursive
+      - run: yarn
+      - run: yarn link
+      - run: cd example && yarn link cli-engine && yarn
+      - run: cd test/roots/test-foo && yarn
+      - run: yarn
+      - run: ./bin/run version
+      - run: yarn test --coverage
+      - run: bash <(curl -s https://codecov.io/bash)
+      - save_cache:
+          key: v3-yarn-{{ .Branch }}-{{checksum "yarn.lock"}}
+          paths:
+            - /cli/node_modules
+            - /usr/local/share/.cache/yarn
+            - /root/.cache/cli-engine/yarn
