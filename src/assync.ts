@@ -55,7 +55,7 @@ export class Assync<T> extends Promise<T[]> {
     } else {
       super((resolve, reject) => {
         Promise.resolve(input || [])
-          .then(resolve)
+          .then(input => resolve(input || []))
           .catch(reject)
       })
     }

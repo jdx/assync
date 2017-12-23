@@ -17,6 +17,12 @@ test('accepts undefined', async () => {
   expect(output).toEqual([])
 })
 
+test('accepts undefined promise', async () => {
+  let input = assync(Promise.resolve(undefined) as any)
+  let output = await input.compact()
+  expect(output).toEqual([])
+})
+
 describe('compact', () => {
   test('ok', async () => {
     let input = assync([1, null, 3, 4, 5, undefined, 6])
