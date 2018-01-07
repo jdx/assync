@@ -7,6 +7,8 @@
 assync
 ======
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/jdxcode/assync.svg)](https://greenkeeper.io/)
+
 Asynchronous, parallel .map(), .filter(), and more. Works really well with async/await.
 
 **Example**
